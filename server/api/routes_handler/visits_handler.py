@@ -6,6 +6,7 @@ from django.http import JsonResponse
 import os
 import logging
 from transcribe.tasks import transcribe_audio, regenerate_soap
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -102,3 +103,40 @@ def request_regenerate_soap(request, visit_id: int):
         return JsonResponse({"error": "Visit not found"}, status=404)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+
+@router.post("/visits/{visit_id}/soap_feedback", tags=["Visits"])
+def soap_feedback(request, visit_id: int):
+    try:
+        visit = Visit.objects.get(id=visit_id)
+        data = json.loads(request.body)
+
+        # Update the SOAP note fields
+        visit.final_soap_note = {
+            "subjective": data.get(
+                "subjective",
+                visit.draft_soap_note["subjective"] if visit.draft_soap_note else "",
+            ),
+            "objective": data.get(
+                "objective",
+                visit.draft_soap_note["objective"] if visit.draft_soap_note else "",
+            ),
+            "assessment": data.get(
+                "assessment",
+                visit.draft_soap_note["assessment"] if visit.draft_soap_note else "",
+            ),
+            "plan": data.get(
+                "plan", visit.draft_soap_note["plan"] if visit.draft_soap_note else ""
+            ),
+        }
+
+        visit.save()
+        return JsonResponse({"status": "success"})
+
+    except Visit.DoesNotExist:
+        return JsonResponse({"error": "Visit not found"}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    except Exception as e:
+        logger.error(f"Error updating SOAP note: {str(e)}")
+        return JsonResponse({"error": "Internal server error"}, status=500)

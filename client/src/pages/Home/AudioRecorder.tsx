@@ -48,7 +48,7 @@ interface Visit {
   transcript_text: string | null;
   transcript_json: Transcript | null;
   draft_soap_note: { subjective: SoapItem; objective: SoapItem; assessment: SoapItem; plan: SoapItem } | null;
-  final_soap_note: { subjective: SoapItem; objective: SoapItem; assessment: SoapItem; plan: SoapItem } | null;
+  final_soap_note: { subjective: string; objective: string; assessment: string; plan: string } | null;
   created_at: string;
   updated_at: string;
   speaker_mapping: Record<number, string>;
@@ -99,6 +99,15 @@ const AudioRecorder: React.FC = () => {
   const [speakerMapping, setSpeakerMapping] = useState<{ [key: number]: string }>({});
 
   const [openSection, setOpenSection] = useState<string | null>(null);
+
+  const [editedSoap, setEditedSoap] = useState<{
+    subjective?: string | null;
+    objective?: string | null;
+    assessment?: string | null;
+    plan?: string | null;
+  } | null>(null);
+
+  const [showSaveButton, setShowSaveButton] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -409,6 +418,42 @@ const AudioRecorder: React.FC = () => {
     }
   };
 
+  const handleSaveSOAP = async () => {
+    try {
+      setIsProcessing(true);
+
+      const finalSoap = {
+        subjective: editedSoap?.subjective,
+        objective: editedSoap?.objective,
+        assessment: editedSoap?.assessment,
+        plan: editedSoap?.plan,
+      };
+      await axios.post(`${BACKEND_URL}/rest/visits/${visit?.id}/soap_feedback`, finalSoap);
+
+      setVisit((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          final_soap_note: finalSoap as {
+            subjective: string;
+            objective: string;
+            assessment: string;
+            plan: string;
+          },
+        };
+      });
+
+      // Reset the edited state
+      setEditedSoap(null);
+      setShowSaveButton(false);
+    } catch (err) {
+      setError(`Failed to save SOAP note: ${err instanceof Error ? err.message : String(err)}`);
+      console.error("Error saving SOAP note:", err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Clean up function when component unmounts
   useEffect(() => {
     return () => {
@@ -699,7 +744,12 @@ const AudioRecorder: React.FC = () => {
                     <h2 className="card-title flex items-center justify-between text-lg font-bold">
                       <div>SOAP Note</div>
                       {/* generate again button */}
-                      <div className="flex justify-end mt-2">
+                      <div className="flex justify-end gap-2">
+                        {showSaveButton && (
+                          <button onClick={handleSaveSOAP} className="btn btn-success btn-sm" disabled={isProcessing}>
+                            {isProcessing ? "Saving..." : "Save Changes"}
+                          </button>
+                        )}
                         <button onClick={regenerateSOAP} className="btn btn-primary btn-sm" disabled={isProcessing}>
                           {isProcessing ? "Generating..." : "Generate Again"}
                         </button>
@@ -743,7 +793,19 @@ const AudioRecorder: React.FC = () => {
                                 <FaInfoCircle className="h-5 w-5" />
                               </button>
                             </div>
-                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.subjective.text}</pre>
+                            <div className="form-control w-full">
+                              <textarea
+                                className="textarea textarea-bordered h-24"
+                                value={editedSoap?.subjective || visit?.final_soap_note?.subjective || visit?.draft_soap_note?.subjective.text}
+                                onChange={(e) => {
+                                  setEditedSoap((prev) => ({
+                                    ...prev,
+                                    subjective: e.target.value,
+                                  }));
+                                  setShowSaveButton(true);
+                                }}
+                              />
+                            </div>
                             {openSection === "subjective" && (
                               <div className="mt-2 space-y-2">
                                 <h4 className="text-sm font-medium">Referenced Sentences:</h4>
@@ -776,7 +838,19 @@ const AudioRecorder: React.FC = () => {
                                 <FaInfoCircle className="h-5 w-5" />
                               </button>
                             </div>
-                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.objective.text}</pre>
+                            <div className="form-control w-full">
+                              <textarea
+                                className="textarea textarea-bordered h-24"
+                                value={editedSoap?.objective || visit?.final_soap_note?.objective || visit?.draft_soap_note?.objective?.text}
+                                onChange={(e) => {
+                                  setEditedSoap((prev) => ({
+                                    ...prev,
+                                    objective: e.target.value,
+                                  }));
+                                  setShowSaveButton(true);
+                                }}
+                              />
+                            </div>
                             {openSection === "objective" && (
                               <div className="mt-2 space-y-2">
                                 <h4 className="text-sm font-medium">Referenced Sentences:</h4>
@@ -809,7 +883,19 @@ const AudioRecorder: React.FC = () => {
                                 <FaInfoCircle className="h-5 w-5" />
                               </button>
                             </div>
-                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.assessment.text}</pre>
+                            <div className="form-control w-full">
+                              <textarea
+                                className="textarea textarea-bordered h-24"
+                                value={editedSoap?.assessment || visit.final_soap_note?.assessment || visit.draft_soap_note.assessment.text}
+                                onChange={(e) => {
+                                  setEditedSoap((prev) => ({
+                                    ...prev,
+                                    assessment: e.target.value,
+                                  }));
+                                  setShowSaveButton(true);
+                                }}
+                              />
+                            </div>
                             {openSection === "assessment" && (
                               <div className="mt-2 space-y-2">
                                 <h4 className="text-sm font-medium">Referenced Sentences:</h4>
@@ -842,7 +928,19 @@ const AudioRecorder: React.FC = () => {
                                 <FaInfoCircle className="h-5 w-5" />
                               </button>
                             </div>
-                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.plan.text}</pre>
+                            <div className="form-control w-full">
+                              <textarea
+                                className="textarea textarea-bordered h-24"
+                                value={editedSoap?.plan || visit.final_soap_note?.plan || visit.draft_soap_note.plan.text}
+                                onChange={(e) => {
+                                  setEditedSoap((prev) => ({
+                                    ...prev,
+                                    plan: e.target.value,
+                                  }));
+                                  setShowSaveButton(true);
+                                }}
+                              />
+                            </div>
                             {openSection === "plan" && (
                               <div className="mt-2 space-y-2">
                                 <h4 className="text-sm font-medium">Referenced Sentences:</h4>
