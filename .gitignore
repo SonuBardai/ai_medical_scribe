@@ -3,3 +3,7 @@ audio
 
 # Transcript cache for debugging
 transcript_cache
+
+# Embeddings
+chromadb_transcripts
+

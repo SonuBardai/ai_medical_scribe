@@ -102,12 +102,13 @@ def preprocess_transcript(transcript_data: dict) -> dict:
     current_sentence = None
     current_speaker = None
 
-    for word in words:
+    for i, word in enumerate(words):
         if current_sentence is None or word["speaker"] != current_speaker:
             # Start a new sentence if we're starting or changing speaker
             if current_sentence:
                 sentences.append(current_sentence)
             current_sentence = {
+                "sentence_id": i,
                 "sentence": word["punctuated_word"],
                 "start": word["start"],
                 "end": word["end"],
@@ -126,4 +127,3 @@ def preprocess_transcript(transcript_data: dict) -> dict:
         sentences.append(current_sentence)
 
     return {"sentences": sentences}
-

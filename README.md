@@ -1,6 +1,19 @@
 # Setup
 - `./run.sh`
 
+### Requirements
+- Python 3.11
+- pipenv
+- Node.js
+
+# Technologies used
+- Django with Django-Ninja
+- TypeScript React
+- Deepgram for transcription
+- Ollama
+  - all-minilm (embeddings)
+  - llama3 (LLM)
+
 # Optimizations
 - Record in a compressed format (audio/webm with Opus codec) to keep file size manageable
   - Took 39 sec for Deepgram to transcribe a 40 minute audio

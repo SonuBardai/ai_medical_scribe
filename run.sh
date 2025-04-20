@@ -3,6 +3,14 @@
 # Exit on any error
 set -e
 
+# --- Check for pipenv ---
+if ! command -v pipenv &> /dev/null; then
+  echo "❌ pipenv is not installed."
+  echo "➡️  Please install it using: pip install pipenv"
+  exit 1
+fi
+
+
 # --- Start Django Backend ---
 echo "🔧 Setting up Django backend..."
 
