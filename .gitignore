@@ -1,2 +1,5 @@
 # Audio files
 audio
+
+# Transcript cache for debugging
+transcript_cache

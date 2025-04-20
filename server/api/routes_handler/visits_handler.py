@@ -4,14 +4,16 @@ from django.core.files.uploadedfile import UploadedFile
 from visits.models import Visit
 from django.http import JsonResponse
 import os
-from threading import Thread
-from django.db import transaction
-from transcribe.models import Polling
+import logging
+from transcribe.helpers import transcribe_audio
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
 
 def store_audio_file(file: UploadedFile, visit_id: int) -> str:
+    # TODO: Write to some object store
     filename = f"visit_{visit_id}_{file.name}"
     file_path = os.path.join("audio", filename)
 
@@ -20,62 +22,6 @@ def store_audio_file(file: UploadedFile, visit_id: int) -> str:
             destination.write(chunk)
 
     return file_path
-
-
-def transcribe_audio(visit: Visit):
-    def process_transcription():
-        try:
-            Polling.objects.create(visit=visit, status="audio_processing_started")
-
-            # Initial transcription
-            with transaction.atomic():
-                # visit.transcript_text = ...
-                # visit.transcript_json = ...
-                # visit.save()
-
-                Polling.objects.create(
-                    visit=visit,
-                    status="transcription_complete",
-                    completed=False,
-                    success=False,
-                )
-
-            # Detail extraction
-            with transaction.atomic():
-                # Simulate detail extraction
-                # TODO: Implement actual detail extraction logic
-                Polling.objects.create(
-                    visit=visit,
-                    status="details_extracted",
-                    completed=False,
-                    success=False,
-                )
-
-            # Text generation
-            with transaction.atomic():
-                # visit.draft_soap_note = ...
-                # visit.save()
-
-                Polling.objects.create(
-                    visit=visit, status="text_generated", completed=False, success=False
-                )
-
-            Polling.objects.create(
-                visit=visit, status="completed", completed=True, success=True
-            )
-
-        except Exception as e:
-            Polling.objects.create(
-                visit=visit,
-                status="error",
-                error=str(e),
-                completed=True,
-                success=False,
-            )
-
-    thread = Thread(target=process_transcription)
-    thread.daemon = True
-    thread.start()
 
 
 @router.post("/visits", tags=["Visits"])

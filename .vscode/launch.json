@@ -12,7 +12,8 @@
             "args": ["runserver"],
             "django": true,
             "console": "integratedTerminal",
-            "justMyCode": true
-        },
+            "justMyCode": true,
+            "envFile": "${workspaceFolder}/server/.env"
+        }
     ]
 }

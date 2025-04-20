@@ -13,6 +13,7 @@ websockets = "*"
 channels = "*"
 channels-redis = "*"
 python-dotenv = "*"
+requests = "*"
 
 [dev-packages]
 ruff = "*"
