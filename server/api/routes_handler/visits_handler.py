@@ -5,7 +5,7 @@ from visits.models import Visit
 from django.http import JsonResponse
 import os
 import logging
-from transcribe.tasks import transcribe_audio
+from transcribe.tasks import transcribe_audio, regenerate_soap
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +85,19 @@ def get_visit_details(request, visit_id: int):
                 "pollings": polling_items,
             }
         )
+    except Visit.DoesNotExist:
+        return JsonResponse({"error": "Visit not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@router.post("/visits/{visit_id}/regenerate_soap", tags=["Visits"])
+def request_regenerate_soap(request, visit_id: int):
+    try:
+        visit = Visit.objects.get(id=visit_id)
+        visit.pollings.all().delete()
+        regenerate_soap(visit)
+
     except Visit.DoesNotExist:
         return JsonResponse({"error": "Visit not found"}, status=404)
     except Exception as e:

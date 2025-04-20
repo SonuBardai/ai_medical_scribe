@@ -54,7 +54,6 @@ def create_embeddings(visit: Visit):
     texts = []
     metadata = []
     for sentence in sentences:
-        texts.append(sentence["sentence"])
         sentence_id = sentence["sentence_id"]
         speaker_id = sentence.get("speaker") or "unknown"
         speaker = (
@@ -62,6 +61,7 @@ def create_embeddings(visit: Visit):
             or speaker_mapping.get(str(speaker_id))
             or f"Speaker {speaker_id}"
         )
+        texts.append(speaker + ": " + sentence["sentence"])
         metadata.append({"sentence_id": sentence_id, "speaker": speaker})
 
     vectorstore = Chroma.from_texts(
@@ -92,7 +92,7 @@ def perform_rag(visit: Visit):
         vectorstore = create_embeddings(visit)
 
         # S
-        query_subjective = "patient symptoms or concerns or pain or discomfort"
+        query_subjective = "patient symptoms or health concerns or pain or discomfort"
         subjective_sentences = retrieve_relevant_sentences(
             query_subjective, vectorstore
         )
@@ -138,6 +138,10 @@ def generate_section(section_name, sentences):
     {excerpts}
 
     {section_name}:
+
+    Instructions:
+    Do not add any information that is not mentioned by the patient or doctor in the transcript. If information is missing, respond with "N/A". Always respond with only the main content of the section, use the following format for your response:
+    {section_name}:<your_response>
     """)
 
     chain = prompt_template | llm
@@ -204,5 +208,35 @@ def process_transcription(visit: Visit):
 
 def transcribe_audio(visit: Visit):
     thread = Thread(target=process_transcription, args=(visit,))
+    thread.daemon = True
+    thread.start()
+
+
+def process_regenerate(visit: Visit):
+    try:
+        Polling.objects.create(visit=visit, status="regenerate_soap_started")
+
+        raw_details = perform_rag(visit)
+        generate_soap(visit, raw_details)
+
+        Polling.objects.create(
+            visit=visit,
+            status="completed",
+            completed=True,
+            success=True,
+        )
+
+    except Exception as e:
+        Polling.objects.create(
+            visit=visit,
+            status="error",
+            error=str(e),
+            completed=True,
+            success=False,
+        )
+
+
+def regenerate_soap(visit: Visit):
+    thread = Thread(target=process_regenerate, args=(visit,))
     thread.daemon = True
     thread.start()

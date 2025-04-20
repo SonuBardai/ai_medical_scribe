@@ -41,8 +41,8 @@ interface Visit {
   audio_file: string | null;
   transcript_text: string | null;
   transcript_json: Transcript | null;
-  draft_soap_note: string | null;
-  final_soap_note: string | null;
+  draft_soap_note: { subjective: string; objective: string; assessment: string; plan: string } | null;
+  final_soap_note: { subjective: string; objective: string; assessment: string; plan: string } | null;
   created_at: string;
   updated_at: string;
   speaker_mapping: Record<number, string>;
@@ -370,6 +370,31 @@ const AudioRecorder: React.FC = () => {
     }
   };
 
+  // Function to regenerate SOAP note
+  const regenerateSOAP = async () => {
+    try {
+      setIsProcessing(true);
+      setError("");
+
+      const response = await fetch(`${BACKEND_URL}/rest/visits/${visit?.id}/regenerate_soap`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to regenerate SOAP note");
+      }
+
+      startPolling(visitId!);
+    } catch (err) {
+      setIsProcessing(false);
+      setError(`Failed to regenerate SOAP note: ${err instanceof Error ? err.message : String(err)}`);
+      console.error("Error regenerating SOAP note:", err);
+    }
+  };
+
   // Clean up function when component unmounts
   useEffect(() => {
     return () => {
@@ -636,7 +661,15 @@ const AudioRecorder: React.FC = () => {
               <div className="w-full md:w-1/2 p-4 flex flex-col h-full overflow-hidden">
                 <div className="card bg-base-100 shadow-sm flex-grow flex flex-col">
                   <div className="card-body p-4 flex flex-col h-full overflow-hidden">
-                    <h2 className="card-title text-lg font-bold">SOAP Note</h2>
+                    <h2 className="card-title flex items-center justify-between text-lg font-bold">
+                      <div>SOAP Note</div>
+                      {/* generate again button */}
+                      <div className="flex justify-end mt-2">
+                        <button onClick={regenerateSOAP} className="btn btn-primary btn-sm" disabled={isProcessing}>
+                          {isProcessing ? "Generating..." : "Generate Again"}
+                        </button>
+                      </div>
+                    </h2>
 
                     {/* Processing Steps UI */}
                     {isProcessing && uniqueStatuses.length > 0 && (
@@ -661,11 +694,33 @@ const AudioRecorder: React.FC = () => {
 
                     {/* Scrollable SOAP content */}
                     <div className="flex-grow overflow-y-auto mt-4 h-full">
-                      {processingComplete && visit?.final_soap_note ? (
-                        <div className="prose max-w-none">
-                          <pre className="whitespace-pre-wrap text-sm">{visit.final_soap_note}</pre>
+                      {processingComplete && visit?.draft_soap_note ? (
+                        <div className="space-y-4">
+                          {/* Subjective */}
+                          <div className="space-y-2">
+                            <h3 className="font-semibold text-base-content">Subjective</h3>
+                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.subjective}</pre>
+                          </div>
+
+                          {/* Objective */}
+                          <div className="space-y-2">
+                            <h3 className="font-semibold text-base-content">Objective</h3>
+                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.objective}</pre>
+                          </div>
+
+                          {/* Assessment */}
+                          <div className="space-y-2">
+                            <h3 className="font-semibold text-base-content">Assessment</h3>
+                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.assessment}</pre>
+                          </div>
+
+                          {/* Plan */}
+                          <div className="space-y-2">
+                            <h3 className="font-semibold text-base-content">Plan</h3>
+                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.plan}</pre>
+                          </div>
                         </div>
-                      ) : processingComplete && !visit?.final_soap_note ? (
+                      ) : processingComplete && !visit?.draft_soap_note ? (
                         <div className="flex flex-col items-center justify-center h-full">
                           <div className="alert alert-warning">
                             <FaExclamation className="stroke-current shrink-0 h-6 w-6 mr-1" />
