@@ -5,7 +5,7 @@ from visits.models import Visit
 from django.http import JsonResponse
 import os
 import logging
-from transcribe.helpers import transcribe_audio
+from transcribe.tasks import transcribe_audio
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,3 @@
-from .models import Visit, Polling
-from django.db import transaction
 from pathlib import Path
 from django.conf import settings
 import os
@@ -7,7 +5,6 @@ import json
 import time
 import requests
 import logging
-from threading import Thread
 
 logger = logging.getLogger(__name__)
 
@@ -130,70 +127,3 @@ def preprocess_transcript(transcript_data: dict) -> dict:
 
     return {"sentences": sentences}
 
-
-def process_transcription(visit: Visit):
-    try:
-        Polling.objects.create(visit=visit, status="audio_processing_started")
-
-        # Initial transcription
-        with transaction.atomic():
-            audio_file_path = visit.audio_file.path
-            transcript_data = get_transcript_from_deepgram(audio_file_path)
-            visit.transcript_text = (
-                transcript_data.get("results", {})
-                .get("channels", [{}])[0]
-                .get("alternatives", [{}])[0]
-                .get("transcript", "")
-            )
-            transcript_json = preprocess_transcript(transcript_data)
-            visit.transcript_json = transcript_json
-            visit.save()
-
-            Polling.objects.create(
-                visit=visit,
-                status="transcription_complete",
-                completed=True,
-                success=True,
-            )
-
-        # Detail extraction
-        with transaction.atomic():
-            # TODO: Implement actual detail extraction logic
-            Polling.objects.create(
-                visit=visit,
-                status="details_extracted",
-                completed=False,
-                success=False,
-            )
-
-        # Text generation
-        with transaction.atomic():
-            # TODO: Implement actual text generation logic
-            Polling.objects.create(
-                visit=visit,
-                status="text_generated",
-                completed=False,
-                success=False,
-            )
-
-        Polling.objects.create(
-            visit=visit,
-            status="completed",
-            completed=True,
-            success=True,
-        )
-
-    except Exception as e:
-        Polling.objects.create(
-            visit=visit,
-            status="error",
-            error=str(e),
-            completed=True,
-            success=False,
-        )
-
-
-def transcribe_audio(visit: Visit):
-    thread = Thread(target=process_transcription, args=(visit,))
-    thread.daemon = True
-    thread.start()
