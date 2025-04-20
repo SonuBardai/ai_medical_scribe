@@ -12,6 +12,7 @@ django = "==5.0.6"
 websockets = "*"
 channels = "*"
 channels-redis = "*"
+python-dotenv = "*"
 
 [dev-packages]
 ruff = "*"
