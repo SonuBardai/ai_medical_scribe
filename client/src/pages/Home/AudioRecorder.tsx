@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { BACKEND_URL } from "Shared/constants";
-import { FaSpinner, FaExclamation, FaClock, FaMicrophone, FaMicrophoneSlash, FaUpload } from "react-icons/fa";
+import { FaSpinner, FaExclamation, FaClock, FaMicrophone, FaMicrophoneSlash, FaUpload, FaInfoCircle } from "react-icons/fa";
 
 // Map status codes to user-friendly labels
 const STATUS_LABELS: Record<string, string> = {
@@ -28,6 +28,7 @@ interface PollingItem {
 
 interface Transcript {
   sentences: {
+    sentence_id: number;
     sentence: string;
     start: number;
     end: number;
@@ -36,13 +37,18 @@ interface Transcript {
   }[];
 }
 
+interface SoapItem {
+  text: string;
+  references: { sentence_id: number; start: number; end: number }[];
+}
+
 interface Visit {
   id: number;
   audio_file: string | null;
   transcript_text: string | null;
   transcript_json: Transcript | null;
-  draft_soap_note: { subjective: string; objective: string; assessment: string; plan: string } | null;
-  final_soap_note: { subjective: string; objective: string; assessment: string; plan: string } | null;
+  draft_soap_note: { subjective: SoapItem; objective: SoapItem; assessment: SoapItem; plan: SoapItem } | null;
+  final_soap_note: { subjective: SoapItem; objective: SoapItem; assessment: SoapItem; plan: SoapItem } | null;
   created_at: string;
   updated_at: string;
   speaker_mapping: Record<number, string>;
@@ -92,6 +98,8 @@ const AudioRecorder: React.FC = () => {
   const [editingSpeaker, setEditingSpeaker] = useState<number | null>(null);
   const [speakerMapping, setSpeakerMapping] = useState<{ [key: number]: string }>({});
 
+  const [openSection, setOpenSection] = useState<string | null>(null);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<number | null>(null);
@@ -102,6 +110,12 @@ const AudioRecorder: React.FC = () => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const formatRecordingTime = (timestamp: number) => {
+    const minutes = Math.floor(timestamp / 60);
+    const seconds = Math.floor(timestamp % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
   const startRecording = async () => {
@@ -436,6 +450,28 @@ const AudioRecorder: React.FC = () => {
     return sortedItems[0].status;
   };
 
+  const getReferencedSentences = (references: { sentence_id: number; start: number; end: number }[]) => {
+    if (!visit?.transcript_json?.sentences) return [];
+
+    const referencedSentences = visit.transcript_json.sentences.filter((s) => references.some((ref) => ref.sentence_id === s.sentence_id));
+
+    // Create a map to track unique sentences with their timestamps
+    const uniqueSentences = new Map<number, (typeof referencedSentences)[0] & { start: number; end: number }>();
+
+    referencedSentences.forEach((sentence) => {
+      const matchingRef = references.find((ref) => ref.sentence_id === sentence.sentence_id);
+      if (matchingRef) {
+        uniqueSentences.set(sentence.sentence_id, {
+          ...sentence,
+          start: matchingRef.start,
+          end: matchingRef.end,
+        });
+      }
+    });
+
+    return Array.from(uniqueSentences.values());
+  };
+
   const uniqueStatuses = getUniqueStatuses();
   const currentStatus = getCurrentStatus();
 
@@ -632,8 +668,7 @@ const AudioRecorder: React.FC = () => {
                                     </div>
                                     <span className="text-sm text-gray-500 ml-2">
                                       <FaClock className="inline mr-1" />
-                                      {new Date(sentence.start * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} -
-                                      {new Date(sentence.end * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                      {formatRecordingTime(sentence.start)} - {formatRecordingTime(sentence.end)}
                                     </span>
                                   </div>
                                   <div className="prose max-w-none">
@@ -698,26 +733,134 @@ const AudioRecorder: React.FC = () => {
                         <div className="space-y-4">
                           {/* Subjective */}
                           <div className="space-y-2">
-                            <h3 className="font-semibold text-base-content">Subjective</h3>
-                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.subjective}</pre>
+                            <div className="flex justify-between items-center">
+                              <h3 className="font-semibold text-base-content">Subjective</h3>
+                              <button
+                                onClick={() => setOpenSection(openSection === "subjective" ? null : "subjective")}
+                                className="tooltip tooltip-bottom"
+                                data-tip={openSection === "subjective" ? "Hide references" : "Show references"}
+                              >
+                                <FaInfoCircle className="h-5 w-5" />
+                              </button>
+                            </div>
+                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.subjective.text}</pre>
+                            {openSection === "subjective" && (
+                              <div className="mt-2 space-y-2">
+                                <h4 className="text-sm font-medium">Referenced Sentences:</h4>
+                                <div className="space-y-1">
+                                  {getReferencedSentences(visit.draft_soap_note.subjective.references).map((sentence) => (
+                                    <div key={sentence.sentence_id} className="text-sm p-2 bg-base-200 rounded">
+                                      <div className="flex justify-between items-center">
+                                        <span className="font-medium">{sentence.speaker_name}: </span>
+                                        <span className="text-xs text-gray-500">
+                                          {formatRecordingTime(sentence.start)} - {formatRecordingTime(sentence.end)}
+                                        </span>
+                                      </div>
+                                      <p className="mt-1">{sentence.sentence}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           {/* Objective */}
                           <div className="space-y-2">
-                            <h3 className="font-semibold text-base-content">Objective</h3>
-                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.objective}</pre>
+                            <div className="flex justify-between items-center">
+                              <h3 className="font-semibold text-base-content">Objective</h3>
+                              <button
+                                onClick={() => setOpenSection(openSection === "objective" ? null : "objective")}
+                                className="tooltip tooltip-bottom"
+                                data-tip={openSection === "objective" ? "Hide references" : "Show references"}
+                              >
+                                <FaInfoCircle className="h-5 w-5" />
+                              </button>
+                            </div>
+                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.objective.text}</pre>
+                            {openSection === "objective" && (
+                              <div className="mt-2 space-y-2">
+                                <h4 className="text-sm font-medium">Referenced Sentences:</h4>
+                                <div className="space-y-1">
+                                  {getReferencedSentences(visit.draft_soap_note.objective.references).map((sentence) => (
+                                    <div key={sentence.sentence_id} className="text-sm p-2 bg-base-200 rounded">
+                                      <div className="flex justify-between items-center">
+                                        <span className="font-medium">{sentence.speaker_name}: </span>
+                                        <span className="text-xs text-gray-500">
+                                          {formatRecordingTime(sentence.start)} - {formatRecordingTime(sentence.end)}
+                                        </span>
+                                      </div>
+                                      <p className="mt-1">{sentence.sentence}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           {/* Assessment */}
                           <div className="space-y-2">
-                            <h3 className="font-semibold text-base-content">Assessment</h3>
-                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.assessment}</pre>
+                            <div className="flex justify-between items-center">
+                              <h3 className="font-semibold text-base-content">Assessment</h3>
+                              <button
+                                onClick={() => setOpenSection(openSection === "assessment" ? null : "assessment")}
+                                className="tooltip tooltip-bottom"
+                                data-tip={openSection === "assessment" ? "Hide references" : "Show references"}
+                              >
+                                <FaInfoCircle className="h-5 w-5" />
+                              </button>
+                            </div>
+                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.assessment.text}</pre>
+                            {openSection === "assessment" && (
+                              <div className="mt-2 space-y-2">
+                                <h4 className="text-sm font-medium">Referenced Sentences:</h4>
+                                <div className="space-y-1">
+                                  {getReferencedSentences(visit.draft_soap_note.assessment.references).map((sentence) => (
+                                    <div key={sentence.sentence_id} className="text-sm p-2 bg-base-200 rounded">
+                                      <div className="flex justify-between items-center">
+                                        <span className="font-medium">{sentence.speaker_name}: </span>
+                                        <span className="text-xs text-gray-500">
+                                          {formatRecordingTime(sentence.start)} - {formatRecordingTime(sentence.end)}
+                                        </span>
+                                      </div>
+                                      <p className="mt-1">{sentence.sentence}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           {/* Plan */}
                           <div className="space-y-2">
-                            <h3 className="font-semibold text-base-content">Plan</h3>
-                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.plan}</pre>
+                            <div className="flex justify-between items-center">
+                              <h3 className="font-semibold text-base-content">Plan</h3>
+                              <button
+                                onClick={() => setOpenSection(openSection === "plan" ? null : "plan")}
+                                className="tooltip tooltip-bottom"
+                                data-tip={openSection === "plan" ? "Hide references" : "Show references"}
+                              >
+                                <FaInfoCircle className="h-5 w-5" />
+                              </button>
+                            </div>
+                            <pre className="whitespace-pre-wrap text-sm bg-base-100 p-4 rounded-lg border border-base-200">{visit.draft_soap_note.plan.text}</pre>
+                            {openSection === "plan" && (
+                              <div className="mt-2 space-y-2">
+                                <h4 className="text-sm font-medium">Referenced Sentences:</h4>
+                                <div className="space-y-1">
+                                  {getReferencedSentences(visit.draft_soap_note.plan.references).map((sentence) => (
+                                    <div key={sentence.sentence_id} className="text-sm p-2 bg-base-200 rounded">
+                                      <div className="flex justify-between items-center">
+                                        <span className="font-medium">{sentence.speaker_name}: </span>
+                                        <span className="text-xs text-gray-500">
+                                          {formatRecordingTime(sentence.start)} - {formatRecordingTime(sentence.end)}
+                                        </span>
+                                      </div>
+                                      <p className="mt-1">{sentence.sentence}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ) : processingComplete && !visit?.draft_soap_note ? (

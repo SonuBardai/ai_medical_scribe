@@ -62,7 +62,14 @@ def create_embeddings(visit: Visit):
             or f"Speaker {speaker_id}"
         )
         texts.append(speaker + ": " + sentence["sentence"])
-        metadata.append({"sentence_id": sentence_id, "speaker": speaker})
+        metadata.append(
+            {
+                "sentence_id": sentence_id,
+                "speaker": speaker,
+                "start": sentence["start"],
+                "end": sentence["end"],
+            }
+        )
 
     vectorstore = Chroma.from_texts(
         texts=texts,
@@ -153,21 +160,44 @@ def generate_soap(visit: Visit, raw_details: dict):
     with transaction.atomic():
         subjective_raw = raw_details.get("subjective", [])
         subjective_draft = generate_section("Subjective", subjective_raw)
+        subjective = {
+            "text": subjective_draft,
+            "references": [
+                {
+                    "sentence_id": item.get("sentence_id"),
+                    "start": item.get("start"),
+                    "end": item.get("end"),
+                }
+                for item in subjective_raw
+            ],
+        }
 
         objective_raw = raw_details.get("objective", [])
         objective_draft = generate_section("Objective", objective_raw)
+        objective = {
+            "text": objective_draft,
+            "references": [item.get("sentence_id") for item in objective_raw],
+        }
 
         assessment_raw = raw_details.get("assessment", [])
         assessment_draft = generate_section("Assessment", assessment_raw)
+        assessment = {
+            "text": assessment_draft,
+            "references": [item.get("sentence_id") for item in assessment_raw],
+        }
 
         plan_raw = raw_details.get("plan", [])
         plan_draft = generate_section("Plan", plan_raw)
+        plan = {
+            "text": plan_draft,
+            "references": [item.get("sentence_id") for item in plan_raw],
+        }
 
         soap_draft = {
-            "subjective": subjective_draft,
-            "objective": objective_draft,
-            "assessment": assessment_draft,
-            "plan": plan_draft,
+            "subjective": subjective,
+            "objective": objective,
+            "assessment": assessment,
+            "plan": plan,
         }
 
         visit.draft_soap_note = soap_draft
