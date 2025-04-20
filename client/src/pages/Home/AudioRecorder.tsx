@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { BACKEND_URL } from "Shared/constants";
-import { FaCircle, FaCheck, FaSpinner, FaExclamation, FaClock, FaMicrophone, FaMicrophoneSlash, FaUpload, FaArrowLeft, FaPlus, FaTimes } from "react-icons/fa";
+import { FaSpinner, FaExclamation, FaClock, FaMicrophone, FaMicrophoneSlash, FaUpload } from "react-icons/fa";
 
 // Map status codes to user-friendly labels
 const STATUS_LABELS: Record<string, string> = {
-  audio_processing_started: "Processing audio...",
-  transcription_complete: "Transcribing the audio...",
-  details_extracted: "Extracting relevant details...",
-  text_generated: "Generating SOAP note...",
+  audio_processing_started: "Transcribing audio...",
+  transcription_complete: "Extracting details...",
+  details_extracted: "Generating SOAP...",
+  text_generated: "Finalizing SOAP...",
   completed: "Processing complete",
   error: "An error occurred",
 };
