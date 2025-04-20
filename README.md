@@ -1,6 +1,9 @@
 # Setup
 - `./run.sh`
 
+### Video demo
+[Video Link](https://youtu.be/O3Hq2BbhcAY)
+
 ### Requirements
 - Python 3.11
 - pipenv
