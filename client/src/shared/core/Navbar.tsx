@@ -31,11 +31,11 @@ const NavBar = () => {
       {backendConnected && <div className="mr-4">✅ API Running</div>}
       {error && <div className="mr-4">❌ API Not Running</div>}
 
-      <div className="flex-none">
+      {/* <div className="flex-none">
         <button className="btn btn-outline btn-ghost" onClick={() => navigate("/login")}>
           Login
         </button>
-      </div>
+      </div> */}
     </div>
   );
 };

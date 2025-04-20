@@ -31,7 +31,7 @@
   ![](screenshots/references.png)
 
 2. Design a feedback loop that improves accuracy over time based on clinician edits
-- 
+- Allowing users to update the generated soap from the ui. this is stored separately, the diff from the updated soap can be used to fine tune the llm to produce better results
 
 3. How would you handle medical conversations with multiple speakers (provider, patient, nurse, family member)?
 
@@ -46,3 +46,9 @@
 - How I've handled this edge-case in my app
    - I'm using an external API Deepgram, which is good at handling audio quality and accents.
    - Also, using the `nova-2-medical` model for transcription prevents mis-interpreting medical jargons said in different accents
+
+
+# Improvements
+- Stream the audio while it's being recorded, avoids latency & parallel processing
+- Use celery, redis for queueing tasks
+- Dockerize

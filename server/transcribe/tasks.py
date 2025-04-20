@@ -71,12 +71,14 @@ def create_embeddings(visit: Visit):
             }
         )
 
+    persist_dir = f"./chromadb_transcripts/visit_{visit.id}"
     vectorstore = Chroma.from_texts(
         texts=texts,
         embedding=embeddings,
         metadatas=metadata,
-        persist_directory="./chromadb_transcripts",
+        persist_directory=persist_dir,
     )
+
     vectorstore.persist()
     return vectorstore
 
