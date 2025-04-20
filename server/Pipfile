@@ -9,11 +9,8 @@ pydantic = "==2.7.2"
 pyjwt = "==2.6.0"
 django-cors-headers = "==4.3.1"
 django = "==5.0.6"
-websockets = "*"
-channels = "*"
-channels-redis = "*"
-python-dotenv = "*"
-requests = "*"
+python-dotenv = "==1.1.0"
+requests = "==2.32.3"
 
 [dev-packages]
 ruff = "*"
