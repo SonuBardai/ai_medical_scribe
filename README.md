@@ -1,5 +1,6 @@
 # Setup
 - `./run.sh`
+- [Video on How to Setup the Project](https://youtu.be/0AOA4lF0vho)
 
 ### Video demo
 [Video Link](https://youtu.be/O3Hq2BbhcAY)
