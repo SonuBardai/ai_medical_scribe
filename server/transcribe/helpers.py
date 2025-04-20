@@ -16,12 +16,12 @@ def _read_cache(audio_file_path: str):
 
     cache_file = cache_dir / f"{os.path.basename(audio_file_path)}.json"
 
-    # TODO: REMOVE LATER. Find the first JSON file and return it
-    json_files = list(cache_dir.glob("*.json"))
-    if json_files:
-        # Use the first JSON file found
-        cache_file = json_files[0]
-        logger.info(f"Using cached transcript from {cache_file.name}")
+    # # TODO: REMOVE LATER. Find the first JSON file and return it
+    # json_files = list(cache_dir.glob("*.json"))
+    # if json_files:
+    #     # Use the first JSON file found
+    #     cache_file = json_files[0]
+    #     logger.info(f"Using cached transcript from {cache_file.name}")
 
     if cache_file.exists():
         with open(cache_file, "r") as f:
@@ -44,9 +44,9 @@ def get_transcript_from_deepgram(audio_file_path: str) -> dict:
     audio_size = os.path.getsize(audio_file_path)
     logger.info(f"Audio file size: {audio_size} bytes")
 
-    _existing_response_cache = _read_cache(audio_file_path)
-    if _existing_response_cache:
-        return _existing_response_cache  # RETURN CACHE DURING DEV: REMOVE LATER
+    # _existing_response_cache = _read_cache(audio_file_path)
+    # if _existing_response_cache:
+    #     return _existing_response_cache  # RETURN CACHE DURING DEV: REMOVE LATER
 
     start_time = time.time()
 
