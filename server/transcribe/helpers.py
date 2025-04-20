@@ -16,10 +16,20 @@ def _read_cache(audio_file_path: str):
     # TODO: Read from s3 or some cloud object store
     cache_dir = Path(settings.BASE_DIR) / "transcript_cache"
     cache_dir.mkdir(exist_ok=True)
-    cache_file = cache_dir / f"{os.path.basename(audio_file_path)}.json"
+
+    # TODO: REMOVE LATER. Find the first JSON file and return it
+    json_files = list(cache_dir.glob("*.json"))
+    if json_files:
+        # Use the first JSON file found
+        cache_file = json_files[0]
+        logger.info(f"Using cached transcript from {cache_file.name}")
+
+    # cache_file = cache_dir / f"{os.path.basename(audio_file_path)}.json"  # TODO: Uncomment later
     if cache_file.exists():
         with open(cache_file, "r") as f:
             return json.load(f)
+
+    logger.info("No cached transcripts found")
     return None
 
 
@@ -69,6 +79,58 @@ def get_transcript_from_deepgram(audio_file_path: str) -> dict:
     return transcript_data
 
 
+def preprocess_transcript(transcript_data: dict) -> dict:
+    """
+    Preprocess the transcript data to group words into sentences by speaker.
+
+    Args:
+        transcript_data: Raw transcript data from Deepgram API
+
+    Returns:
+        dict: Processed transcript with sentences grouped by speaker
+    """
+    # Get the words from the transcript data
+    words = (
+        transcript_data.get("results", {})
+        .get("channels", [{}])[0]
+        .get("alternatives", [{}])[0]
+        .get("words", [])
+    )
+
+    if not words:
+        return {"sentences": []}
+
+    # Group words by speaker
+    sentences = []
+    current_sentence = None
+    current_speaker = None
+
+    for word in words:
+        if current_sentence is None or word["speaker"] != current_speaker:
+            # Start a new sentence if we're starting or changing speaker
+            if current_sentence:
+                sentences.append(current_sentence)
+            current_sentence = {
+                "sentence": word["punctuated_word"],
+                "start": word["start"],
+                "end": word["end"],
+                "speaker": word["speaker"],
+                "speaker_name": f"Speaker {word['speaker']}",
+                # TODO: update this ^ with who the speaker is. Doctor/Patient/Family
+            }
+            current_speaker = word["speaker"]
+        else:
+            # Continue the current sentence
+            current_sentence["sentence"] += f" {word['punctuated_word']}"
+            current_sentence["end"] = word["end"]
+
+    # Add the last sentence if it exists
+    if current_sentence:
+        sentences.append(current_sentence)
+
+    return {"sentences": sentences}
+
+
 def process_transcription(visit: Visit):
     try:
         Polling.objects.create(visit=visit, status="audio_processing_started")
@@ -83,7 +145,8 @@ def process_transcription(visit: Visit):
                 .get("alternatives", [{}])[0]
                 .get("transcript", "")
             )
-            visit.transcript_json = transcript_data
+            transcript_json = preprocess_transcript(transcript_data)
+            visit.transcript_json = transcript_json
             visit.save()
 
             Polling.objects.create(
