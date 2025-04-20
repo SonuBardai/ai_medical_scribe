@@ -1,0 +1,24 @@
+# Project
+logs/
+*.log
+
+# Python
+*.egg
+*.egg-info/
+*.env
+*.py[cod]
+.coverage
+
+poetry.toml
+
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv*/
+__pycache__/
+build/
+dist/
+
+# IDE
+.idea/
+.vscode/
