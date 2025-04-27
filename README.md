@@ -1,9 +1,5 @@
 # Setup
 - `./run.sh`
-- [Video on How to Setup the Project](https://youtu.be/0AOA4lF0vho)
-
-### Video demo
-[Video Link](https://youtu.be/O3Hq2BbhcAY)
 
 ### Requirements
 - Python 3.11
@@ -25,7 +21,6 @@
   - Render transcript in the UI while text extraction is going on - Improves UI
   - Polling for status updates - Improves UI
 - Use `nova-2-medical` for transcription for better performance with medical data
-- 
 
 
 # Edgecases covered
